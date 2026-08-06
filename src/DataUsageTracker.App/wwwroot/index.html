@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Data Usage Tracker</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="/icons/app-icon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="header">
+      <div>
+        <h1>Data Usage Tracker</h1>
+        <p class="sub">Real-time network usage with cross-platform fallback states.</p>
+      </div>
+      <button id="installBtn" class="install hidden" type="button">Install App</button>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Download Speed</h2>
+        <p id="downloadRate" class="metric">0 B/s</p>
+      </article>
+      <article class="card">
+        <h2>Upload Speed</h2>
+        <p id="uploadRate" class="metric">0 B/s</p>
+      </article>
+      <article class="card">
+        <h2>Total Download</h2>
+        <p id="downloadTotal" class="metric">0 B</p>
+      </article>
+      <article class="card">
+        <h2>Total Upload</h2>
+        <p id="uploadTotal" class="metric">0 B</p>
+      </article>
+    </section>
+
+    <section class="status-row card">
+      <div>
+        <h2>Status</h2>
+        <p id="statusText">Starting...</p>
+        <p id="message" class="muted">Collecting first sample...</p>
+      </div>
+      <div class="meta">
+        <span id="platformChip" class="chip">platform: unknown</span>
+        <span id="fpsChip" class="chip">fps: --</span>
+        <span id="updatedAt" class="chip">updated: --</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

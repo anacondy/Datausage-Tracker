@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DataUsageTracker.App/DataUsageTracker.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DataUsageTracker.App.Tests/DataUsageTracker.App.Tests.csproj" />
+  </Folder>
+</Solution>
