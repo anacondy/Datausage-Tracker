@@ -1,0 +1,32 @@
+FULL PROJECT FILE — DataUsageTracker
+Branch: arena/01a029b8-datausage-tracker
+PR: https://github.com/anacondy/Datausage-Tracker/pull/1
+Commit: 02338e6
+Status: NOT MERGED
+
+=== FILES ===
+README.md, LICENSE, DataUsageTracker.ps1, FindDataHog.ps1, ChromeDataProbe.ps1,
+Run-*.bat (3 files), DataUsageMonitor.zip
+
+docs/ (SECURITY_AUDIT.md, METHODOLOGY_TEST_REPORT.md, CROSS_PLATFORM_ASSESSMENT.md,
+UI_OPTIMIZATION.md, linux_scheduling.md, TESTING_FAILURE_MODES.md)
+
+tests/test_cross_platform.py
+ui/index.html, ui/ui_preview.png
+python/ (data_tracker_cross_platform.py, find_data_hog_cross_platform.py, chrome_probe_cross_platform.py)
+
+deploy/README.md, deploy/linux/install.sh, deploy/windows/install.ps1, deploy/macos/install.sh
+releases/RELEASE_NOTES.md, releases/windows/*.zip, releases/linux/*.tar.gz, releases/macos/*.tar.gz
+
+=== PRIVACY ===
+Original README content (laptop info, screenshots) was ALREADY PUBLIC.
+Not created or exposed by this audit. Deploy/release builds focus on daemon/service.
+
+=== DEPLOY ===
+Linux: deploy/linux/install.sh (systemd user service, MemoryMax=64M, Nice=-5, KDE optimized)
+Windows: deploy/windows/install.ps1 (TaskScheduler daemon)
+macOS: deploy/macos/install.sh (launchd agent)
+One-line commands in deploy/README.md.
+
+=== PR STATUS ===
+Open. Not merged. All progress saved to arena/01a029b8-datausage-tracker.
