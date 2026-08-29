@@ -106,12 +106,15 @@ root once) keeps the timer running while logged out.
 
 These are the packaged releases (not the deploy scripts above):
 
-- **Windows**: `releases/windows/DataUsageTracker-v1.0.1-windows.zip`
-- **Linux**: `releases/linux/DataUsageTracker-v1.0.1-linux.tar.gz`
-- **macOS**: `releases/macos/DataUsageTracker-v1.0.1-macos.tar.gz`
+- **Windows**: `releases/windows/DataUsageTracker-v1.0.2-windows.zip`
+- **Linux**: `releases/linux/DataUsageTracker-v1.0.2-linux.tar.gz`
+- **macOS**: `releases/macos/DataUsageTracker-v1.0.2-macos.tar.gz`
 
-(v1.0.0 archives were removed after the independent audit found they shipped a
-broken dashboard and a non-accumulating Linux tracker — see
-`releases/RELEASE_NOTES.md`.)
+(v1.0.1 archives remain for reference but are superseded; v1.0.0 was removed
+after the independent audit found it shipped a broken dashboard and a
+non-accumulating Linux tracker — see `releases/RELEASE_NOTES.md`.)
+
+For GitHub Releases, use the self-contained one-line installers in
+`datausage-v1.0.2/release-assets/` (verified by `SHA256SUMS.txt`).
 
 But for deployable installation (recommended), use the one-line commands above.

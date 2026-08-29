@@ -19,14 +19,21 @@ Three residual issues found in an independent re-sweep of v1.0.1, all fixed:
    task pointing at a missing script. It now throws before task registration.
    Also added `systemctl --user import-environment` for notifications on X11
    sessions.
+4. **Privacy scrub (public-release requirement)** — personal machine details
+   (hostname, hotspot name, per-app figures, process names from a private
+   machine) removed from `README.md` and `ChromeDataProbe.ps1`; replaced with
+   generic guidance. Source archives rebuilt from scrubbed sources (identical
+   manifests) and `SHA256SUMS.txt` regenerated. All tracking is local-only:
+   nothing is ever uploaded or published.
 
 **Self-contained installers** (this release): `install-linux.sh`,
 `install-windows.ps1`, `install-macos.sh` embed the full code — download once,
 install anywhere, no further network access needed.
 
----
+Archives: `releases/{linux,macos,windows}/DataUsageTracker-v1.0.2-*` (v1.0.1
+kept for reference, superseded).
 
-# Release Notes — DataUsageTracker
+---
 
 Branch: `arena/01a04ccb-datausage-tracker`  
 PR: https://github.com/anacondy/Datausage-Tracker/pull/1
