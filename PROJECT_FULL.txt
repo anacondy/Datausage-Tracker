@@ -1,0 +1,56 @@
+FULL PROJECT FILE — DataUsageTracker
+Branch: arena/01a029b8-datausage-tracker
+PR: https://github.com/anacondy/Datausage-Tracker/pull/1
+Commit: 02338e6
+Status: NOT MERGED
+
+=== FILES ===
+README.md, LICENSE, DataUsageTracker.ps1, FindDataHog.ps1, ChromeDataProbe.ps1,
+Run-*.bat (3 files), DataUsageMonitor.zip
+
+docs/ (SECURITY_AUDIT.md, METHODOLOGY_TEST_REPORT.md, CROSS_PLATFORM_ASSESSMENT.md,
+UI_OPTIMIZATION.md, linux_scheduling.md, TESTING_FAILURE_MODES.md)
+
+tests/test_cross_platform.py
+ui/index.html (ui_preview.png AI mockup removed 2026-08-29: unrelated concept art, implied features that do not exist)
+python/ (data_tracker_cross_platform.py, find_data_hog_cross_platform.py, chrome_probe_cross_platform.py)
+
+deploy/README.md, deploy/linux/install.sh, deploy/windows/install.ps1, deploy/macos/install.sh
+releases/RELEASE_NOTES.md, releases/windows/*.zip, releases/linux/*.tar.gz, releases/macos/*.tar.gz
+
+=== PRIVACY ===
+Original README content (laptop info, screenshots) was ALREADY PUBLIC.
+Not created or exposed by this audit. Deploy/release builds focus on daemon/service.
+v1.0.2 (2026-08-29): per the owner's request for a fully public project, ALL
+personal machine details (hostname, hotspot name, per-app figures, process
+names) were REMOVED from README.md and ChromeDataProbe.ps1 and replaced with
+generic guidance; release archives rebuilt from the scrubbed sources.
+
+=== DEPLOY ===
+Linux: deploy/linux/install.sh (systemd user service, MemoryMax=64M, Nice=10 +
+idle CPU/IO scheduling — v1.0.0's Nice=-5 was impossible unprivileged; KDE
+notifications, Arch-ready; see FIXES_APPLIED.md)
+Windows: deploy/windows/install.ps1 (TaskScheduler daemon)
+macOS: deploy/macos/install.sh (launchd agent)
+One-line commands in deploy/README.md.
+
+=== PR STATUS ===
+Open. Not merged. All progress saved to arena/01a029b8-datausage-tracker.
+
+=== AUDIT FIXES (2026-08-29, branch arena/01a04ccb-datausage-tracker) ===
+AUDIT_REPORT.md (independent audit) was committed; all its blocking findings
+were then fixed on this branch — see FIXES_APPLIED.md for the mapping:
+- Linux/macOS tracker rewritten: CSV append + baseline.json + reboot-safe
+  deltas + dedup guard + loopback excluded + atomic writes (v1.0.0 overwrote
+  its log every run and never accumulated).
+- ui/index.html JS SyntaxError (literal \n) fixed; full HTML escaping added.
+- Arch/KDE systemd units corrected: Nice=-5 (impossible for user services)
+  replaced by Nice=10 + idle CPU/IO + CPUQuota=10%; timer gained Persistent,
+  AccuracySec, RandomizedDelaySec; hardening added; verify-clean.
+- Real KDE Plasma notifications (notify-send/kdialog, threshold-based).
+- Windows: atomic baseline writes; absent-adapter baselines preserved
+  (new defect found during the port; fixed on both platforms).
+- Releases rebuilt as v1.0.1; broken v1.0.0 archives removed.
+- New functional tests: tests/test_delta_methodology.py (26 checks, all pass).
+- One-liners cheat sheet: docs/ONE_LINERS.md (moved from audit/ on 2026-08-29;
+  user-facing doc, covers stable release URLs + dev URLs for all 3 OSes).

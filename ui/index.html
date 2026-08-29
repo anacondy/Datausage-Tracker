@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataUsage Tracker — Dashboard</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-2: #818cf8;
+  --success: #34d399;
+  --border: #334155;
+  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; padding: 0;
+  font-family: var(--font);
+  background: linear-gradient(180deg, var(--bg) 0%, #0b1221 100%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+header {
+  padding: 3rem 1.5rem 2rem;
+  max-width: 1200px; margin: 0 auto;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em;
+  margin: 0 0 0.25rem; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+header p { color: var(--text-muted); font-size: 1.05rem; margin: 0; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 1.25rem; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+}
+
+.card h2 { margin: 0 0 1rem; font-size: 1.15rem; color: var(--text); display: flex; align-items: center; gap: 0.6rem; }
+.card h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+.upload-area {
+  border: 2px dashed var(--surface-2); border-radius: 1rem; padding: 2rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+}
+.upload-area:hover { border-color: var(--accent); background: rgba(56,189,248,0.04); }
+.upload-area input { display: none; }
+.upload-area .hint { color: var(--text-muted); font-size: .9rem; margin-top: .5rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+thead th { text-align: left; padding: .65rem .75rem; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody td { padding: .6rem .75rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); }
+tbody tr:hover td { background: rgba(255,255,255,0.03); }
+
+.byte { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--accent-2); font-weight: 600; }
+.date { color: var(--text-muted); white-space: nowrap; }
+
+.tag { display: inline-block; padding: .15rem .55rem; border-radius: .5rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.tag-adapter { background: rgba(56,189,248,0.15); color: var(--accent); }
+.tag-app { background: rgba(129,140,248,0.15); color: var(--accent-2); }
+
+.empty-state { color: var(--text-muted); text-align: center; padding: 2rem 0; }
+
+@media (max-width: 720px) {
+  header h1 { font-size: 1.8rem; }
+  main { padding: 0 1rem 3rem; }
+  .card { padding: 1.2rem; }
+  table, thead, tbody, th, td, tr { display: block; }
+  thead { display: none; }
+  tbody td { padding: .5rem 0; display: flex; justify-content: space-between; align-items: center; }
+  tbody td::before { content: attr(data-label); font-weight: 600; color: var(--text-muted); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>DataUsage Tracker</h1>
+  <p>Cross-platform CSV dashboard — view your adapter and per-app usage without PowerShell</p>
+</header>
+
+<main>
+
+  <section class="card" aria-label="Upload CSV">
+    <h2><span class="dot"></span> Upload your CSV</h2>
+    <label class="upload-area" id="dropZone" aria-label="Drop CSV file here">
+      <input type="file" id="fileInput" accept=".csv" aria-label="Select CSV file" />
+      <strong>Drop a CSV here</strong> or click to choose
+      <div class="hint">Works with <code>DataUsage_Log.csv</code> or <code>DataUsage_Report.csv</code></div>
+    </label>
+  </section>
+
+  <section class="card" aria-label="Results" id="resultsCard" style="display:none;">
+    <h2><span class="dot"></span> <span id="resultsTitle">Results</span></h2>
+    <div style="overflow-x:auto;" id="resultsContainer"></div>
+  </section>
+
+  <section class="card" aria-label="How it works" style="opacity: .92;">
+    <h2><span class="dot"></span> How this tracker works</h2>
+    <ul style="line-height:1.7; color:var(--text-muted); padding-left:1.1rem;">
+      <li><strong>WinRT API</strong> — reads the same per-app counters Windows Settings uses.</li>
+      <li><strong>Adapter statistics</strong> — reads per-interface byte counters from the OS network stack.</li>
+      <li><strong>Delta computation</strong> — compares current adapter counters against stored baselines.</li>
+      <li><strong>Reboot-safe</strong> — detects adapter counter resets and treats them as new usage (no double counting).</li>
+      <li><strong>Low power</strong> — does not poll continuously; reads existing OS counters on demand.</li>
+      <li><strong>Scheduled tracking</strong> — every 30 minutes (Windows Task Scheduler, or a systemd user timer on Linux / launchd on macOS).</li>
+      <li><strong>Loopback excluded</strong> — local-only traffic is not counted on Linux, so local proxies are not double-counted.</li>
+    </ul>
+  </section>
+
+</main>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const resultsCard = document.getElementById('resultsCard');
+const resultsTitle = document.getElementById('resultsTitle');
+const resultsContainer = document.getElementById('resultsContainer');
+
+function formatBytes(bytesStr) {
+  const b = parseFloat(String(bytesStr).replace(/,/g, '')) || 0;
+  if (b < 1024) return b.toFixed(0) + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(2) + ' KB';
+  if (b < 1024 * 1024 * 1024) return (b / (1024 * 1024)).toFixed(2) + ' MB';
+  return (b / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+
+function detectKind(rows) {
+  const firstRow = rows[0] || {};
+  const headers = firstRow ? Object.keys(firstRow) : [];
+  if (headers.some(h => h.toLowerCase().includes('adapter'))) return 'adapter';
+  if (headers.some(h => h.toLowerCase().includes('app') || h.toLowerCase().includes('appname') || h.toLowerCase().includes('profile'))) return 'app';
+  return 'unknown';
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderTable(headers, rows) {
+  let html = '<table><thead><tr>';
+  headers.forEach(h => html += '<th>' + escapeHtml(h) + '</th>');
+  html += '</tr></thead><tbody>';
+  rows.slice(0, 40).forEach(row => {
+    html += '<tr>';
+    headers.forEach(h => {
+      let v = row[h] !== undefined ? String(row[h]) : '';
+      let cellClass = '';
+      if (h.toLowerCase().includes('byte') || h.toLowerCase().includes('total') || h.toLowerCase().includes('delta') || h.toLowerCase().includes('sent') || h.toLowerCase().includes('received')) {
+        cellClass = 'byte';
+        v = formatBytes(v);
+      } else if (h.toLowerCase().includes('date') || h.toLowerCase().includes('time') || h.toLowerCase().includes('timestamp')) {
+        cellClass = 'date';
+      }
+      html += '<td data-label="' + escapeHtml(h) + '" class="' + cellClass + '">' + (v ? escapeHtml(v) : '<span style="opacity:.4;">&mdash;</span>') + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  if (rows.length > 40) html += '<p style="color:var(--text-muted); margin-top:.75rem; font-size:.85rem;">Showing first 40 of ' + rows.length + ' rows.</p>';
+  return html;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return { headers: [], rows: [] };
+  const headers = lines[0].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+    const row = {};
+    headers.forEach((h, idx) => row[h] = values[idx] !== undefined ? values[idx] : '');
+    rows.push(row);
+  }
+  return { headers, rows };
+}
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const { headers, rows } = parseCSV(e.target.result);
+    const kind = detectKind(rows);
+    resultsTitle.textContent = file.name + ' — ' + (kind === 'adapter' ? 'Adapter Log' : kind === 'app' ? 'App Usage' : 'CSV');
+    resultsContainer.innerHTML = renderTable(headers, rows);
+    resultsCard.style.display = 'block';
+    resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  reader.readAsText(file);
+}
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+  dropZone.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); });
+});
+['dragenter', 'dragover'].forEach(ev => {
+  dropZone.addEventListener(ev, () => dropZone.style.borderColor = 'var(--accent)');
+});
+['dragleave', 'drop'].forEach(ev => {
+  dropZone.addEventListener(ev, () => dropZone.style.borderColor = 'var(--surface-2)');
+});
+dropZone.addEventListener('drop', (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) handleFile(file);
+});
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+</script>
+</body>
+</html>

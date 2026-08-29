@@ -1,0 +1,3 @@
+# Byte-exact release artifacts: checksums in datausage-v1.0.2/release-assets/SHA256SUMS.txt
+# must verify on every checkout (install-windows.ps1 is authored with CRLF).
+datausage-v1.0.2/release-assets/* -text
