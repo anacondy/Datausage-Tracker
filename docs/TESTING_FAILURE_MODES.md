@@ -108,8 +108,8 @@ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 - **Per-app WinRT tracking** (`DataUsageTracker.ps1` per-app feature) — Windows ONLY. Linux/macOS have no equivalent to Windows SRUM database.
 - **Scheduled background tracking** — Windows uses `Register-ScheduledTask`
   built into the script. On Linux/macOS it is provided by the one-line
-  installers (`deploy/linux/install.sh` → systemd user timer with
-  `Persistent=true`; `deploy/macos/install.sh` → launchd agent), or manually
+  installers (`deploy/linux/install.sh` → systemd user timer with a
+  guaranteed post-boot run via `OnBootSec`; `deploy/macos/install.sh` → launchd agent), or manually
   via `cron`/`systemd`/`launchd` (see `docs/linux_scheduling.md`).
 - **Live TCP connection inspection** (`chrome_probe_cross_platform.py`) requires `psutil` — without it, process list is empty but script exits cleanly.
 - **Browser download folder scanning** uses different profile paths per OS — Chrome/Firefox directories vary (`~/.config/google-chrome` vs `%LOCALAPPDATA%` vs `~/Library/Application Support`).

@@ -19,6 +19,13 @@ Three residual issues found in an independent re-sweep of v1.0.1, all fixed:
    task pointing at a missing script. It now throws before task registration.
    Also added `systemctl --user import-environment` for notifications on X11
    sessions.
+4. **Privacy scrub (public-release requirement)** — all personal machine
+   details (hostnames, hotspot names, per-app figures from a private machine,
+   process names) were removed from `README.md` and `ChromeDataProbe.ps1` and
+   replaced with generic guidance. The source archives were rebuilt from the
+   scrubbed sources (same manifests) and `SHA256SUMS.txt` regenerated — this is
+   the documented reason the supplied archives were rebuilt. Everything is
+   computed locally on the user's own machine; nothing is ever uploaded.
 
 **Self-contained installers** (this release): `install-linux.sh`,
 `install-windows.ps1`, `install-macos.sh` embed the full code — download once,

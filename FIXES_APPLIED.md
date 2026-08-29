@@ -43,3 +43,16 @@ and, where possible, executed live.
 - `bash -n deploy/linux/install.sh` — clean
 - `systemd-analyze verify` on both units — clean (exit 0)
 - `node --check` on dashboard JS — clean
+
+---
+
+## v1.0.2 addendum — residual sweep (release-ready pass)
+
+| # | Finding | Fix | Where |
+|---|---|---|---|
+| 14 | `_notify_send` trusted exit — `check=False` meant a *failed* notify-send (e.g. `--app-name` on libnotify < 0.8) still returned True AND recorded rate-limit state, silently swallowing the alert | Exit-code-checked fallback chain: notify-send `--app-name` → notify-send plain → kdialog; only exit-0 counts as delivered; +2 tests (26→28) | `python/data_tracker_cross_platform.py`, `tests/test_delta_methodology.py` |
+| 15 | `Persistent=true` is a no-op on monotonic (`OnBootSec`/`OnUnitActiveSec`) timers — systemd honors it only with `OnCalendar=` | Removed; comment now explains post-boot coverage comes from `OnBootSec=2min` + reboot-safe deltas | `deploy/linux/install.sh` |
+| 16 | Windows installer swallowed download failures (`-ErrorAction SilentlyContinue`) → could register a task pointing at a missing script | Fail-fast `try/catch` + `Test-Path` guard before task registration | `deploy/windows/install.ps1` |
+| 17 | Notifications could fail on X11 sessions where the systemd user manager lacks `DISPLAY` | `systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP` before enabling | `deploy/linux/install.sh` |
+| 18 | **Privacy breach (user-reported)**: README and `ChromeDataProbe.ps1` exposed personal machine details (a private hostname, a phone-hotspot name, per-app figures and process names taken from the owner's private screenshots) in a public project | Full scrub: README rewritten as generic public documentation (same advice, zero personal data, explicit "privacy by design" note); hardcoded hotspot name removed from probe output; all v1.0.2 archives rebuilt from scrubbed sources with identical manifests; `SHA256SUMS.txt` regenerated (documented reason for archive rebuild). The removed identifiers are deliberately not repeated anywhere in this repo. | `README.md`, `ChromeDataProbe.ps1`, `releases/**`, `datausage-v1.0.2/release-assets/SHA256SUMS.txt` |
+| 19 | git normalized `install-windows.ps1` CRLF→LF on commit, breaking `sha256sum -c SHA256SUMS.txt` | `.gitattributes` (`datausage-v1.0.2/release-assets/* -text`) preserves release artifacts byte-exact; CRLF restored; all 7 checksums verify | `.gitattributes`, `datausage-v1.0.2/release-assets/install-windows.ps1` |

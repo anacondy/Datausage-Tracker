@@ -250,6 +250,26 @@ def test_dashboard():
         print("  [SKIP] node not available — JS syntax check skipped")
 
 
+def test_notifications():
+    print("=== DESKTOP NOTIFICATIONS (resilience + honest delivery) ===")
+    e = Env()
+    try:
+        # v1.0.2 fix: a notification counts as delivered ONLY if the command
+        # exits 0. In this sandbox no notifier is installed at all:
+        check("_notify_send returns False when no notifier exists",
+              dt._notify_send("test", "body") is False)
+        os.environ["DATAUSAGE_NOTIFY"] = "1"
+        # must never raise nor break state even with DATAUSAGE_NOTIFY=1 and no notifier:
+        dt.maybe_notify(e.log_dir, 10**9, 10**9, dt.ist_now())
+        state = json.load(open(os.path.join(e.log_dir, dt.LAST_RUN_NAME)))
+        check("failed notification not recorded as delivered",
+              "LastIntervalNotifyUtc" not in state and
+              "LastDailyNotifyDate" not in state, str(state))
+    finally:
+        os.environ.pop("DATAUSAGE_NOTIFY", None)
+        e.cleanup()
+
+
 def main():
     print("DataUsageTracker — delta methodology functional tests")
     print(f"Python {sys.version.split()[0]}, repo {REPO}\n")
@@ -260,6 +280,7 @@ def main():
     test_state_files()
     test_csv_matches_windows_columns()
     test_ist_offset()
+    test_notifications()
     test_dashboard()
     print(f"\n=== SUMMARY: {PASS} passed, {FAIL} failed ===")
     sys.exit(1 if FAIL else 0)

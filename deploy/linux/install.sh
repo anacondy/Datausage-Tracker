@@ -10,9 +10,9 @@
 #   • Nice=10 + CPUSchedulingPolicy=idle + IOSchedulingClass=idle
 #     (all legal for a systemd --user service; the process yields to everything)
 #   • CPUQuota=10%, MemoryMax=64M (hard caps; real peak is ~13 MB)
-#   • Timer: Persistent=true (catch up runs missed while powered off — matches
-#     Windows' StartWhenAvailable), AccuracySec=1min + RandomizedDelaySec=90
-#     (coalesces wakeups — friendlier for laptops/battery)
+#   • Timer: OnBootSec=2min covers post-boot (delta logic bridges any gap),
+#     AccuracySec=1min + RandomizedDelaySec=90 coalesce wakeups —
+#     friendlier for laptops/battery
 #   • Real KDE Plasma notifications via notify-send (threshold-based,
 #     rendered natively by Plasma), not just a "notify-send found" message
 #   • Cheap hardening: NoNewPrivileges, PrivateTmp, ProtectSystem=full,
@@ -106,15 +106,15 @@ SERVICE_EOF
 # --------------------------------------------- systemd timer (battery-safe) -
 cat > "$SERVICE_DIR/datausage-tracker.timer" << 'TIMER_EOF'
 [Unit]
-Description=Run DataUsage Tracker every 30 minutes (catches up after downtime)
+Description=Run DataUsage Tracker every 30 minutes
 
 [Timer]
 OnBootSec=2min
 OnUnitActiveSec=30min
-# Catch up one run if the machine was off when a run was due
-# (parity with Windows' StartWhenAvailable):
-Persistent=true
-# Coalesce wakeups; allow jitter so we don't wake the laptop needlessly:
+# Monotonic timer: always runs 2 min after boot, so a machine that was off
+# never loses data — the delta logic counts the whole gap at the first run
+# after boot (reboot-safe by design). Persistent=true would be a no-op here:
+# systemd only honors it on OnCalendar= timers.
 AccuracySec=1min
 RandomizedDelaySec=90
 Unit=datausage-tracker.service
@@ -154,6 +154,9 @@ fi
 
 # ------------------------------------------------------------ enable -------
 if command -v systemctl &>/dev/null && systemctl --user daemon-reload 2>/dev/null; then
+    # Make sure desktop notifications can reach the user manager's env
+    # (needed on some X11/edge sessions where the user manager lacks DISPLAY).
+    systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2>/dev/null || true
     systemctl --user enable --now datausage-tracker.timer \
         && echo "[DataUsageTracker] Timer enabled and started (every 30 min)." \
         || echo "Timer not started (may need a login session). Run manually: python3 $INSTALL_DIR/data_tracker.py"

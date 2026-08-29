@@ -32,9 +32,9 @@ What it does:
 - Genuinely low-power for Arch / KDE Plasma, using only flags a user service
   may set: `Nice=10`, `CPUSchedulingPolicy=idle`, `IOSchedulingClass=idle`,
   `CPUQuota=10%`, `MemoryMax=64M`
-- Timer is battery-friendly and matches Windows behavior: `Persistent=true`
-  (catch up runs missed while powered off — parity with `StartWhenAvailable`),
-  `AccuracySec=1min` + `RandomizedDelaySec=90` (coalesced wakeups)
+- Timer is battery-friendly: `OnBootSec=2min` guarantees the post-boot data
+  point (reboot-safe deltas count any gap in one go), and `AccuracySec=1min` +
+  `RandomizedDelaySec=90` coalesce wakeups
 - Real KDE Plasma **desktop notifications** via `notify-send` (threshold-based:
   512 MB per interval / 2 GB per day by default; Plasma renders them natively).
   Requires `libnotify` (`sudo pacman -S libnotify` on Arch); tracking works
@@ -90,7 +90,7 @@ All three platforms run a background service/daemon:
 
 | Platform | Daemon Type | Schedule | Resource Limit | Optimized For |
 |---|---|---|---|---|
-| Linux / Arch | `systemd` user service + timer | Every 30 min (Persistent) | `MemoryMax=64M`, `CPUQuota=10%`, `Nice=10` + idle CPU/IO scheduling | KDE Plasma / Arch (yield-to-desktop, wakeup coalescing) |
+| Linux / Arch | `systemd` user service + timer | Every 30 min + 2 min after boot | `MemoryMax=64M`, `CPUQuota=10%`, `Nice=10` + idle CPU/IO scheduling | KDE Plasma / Arch (yield-to-desktop, wakeup coalescing) |
 | Windows | `TaskScheduler` (user-level) | Every 30 min + logon | `ExecutionTimeLimit=3min` | Low battery / low CPU |
 | macOS | `launchd` agent | Every 30 min (StartInterval=1800) | Nice=10 | Background efficiency |
 
@@ -106,12 +106,15 @@ root once) keeps the timer running while logged out.
 
 These are the packaged releases (not the deploy scripts above):
 
-- **Windows**: `releases/windows/DataUsageTracker-v1.0.1-windows.zip`
-- **Linux**: `releases/linux/DataUsageTracker-v1.0.1-linux.tar.gz`
-- **macOS**: `releases/macos/DataUsageTracker-v1.0.1-macos.tar.gz`
+- **Windows**: `releases/windows/DataUsageTracker-v1.0.2-windows.zip`
+- **Linux**: `releases/linux/DataUsageTracker-v1.0.2-linux.tar.gz`
+- **macOS**: `releases/macos/DataUsageTracker-v1.0.2-macos.tar.gz`
 
-(v1.0.0 archives were removed after the independent audit found they shipped a
-broken dashboard and a non-accumulating Linux tracker — see
-`releases/RELEASE_NOTES.md`.)
+(v1.0.1 archives remain for reference but are superseded; v1.0.0 was removed
+after the independent audit found it shipped a broken dashboard and a
+non-accumulating Linux tracker — see `releases/RELEASE_NOTES.md`.)
+
+For GitHub Releases, use the self-contained one-line installers in
+`datausage-v1.0.2/release-assets/` (verified by `SHA256SUMS.txt`).
 
 But for deployable installation (recommended), use the one-line commands above.

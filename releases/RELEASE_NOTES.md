@@ -1,5 +1,40 @@
 # Release Notes — DataUsageTracker
 
+## v1.0.2 — release-ready hardening (final sweep)
+
+Three residual issues found in an independent re-sweep of v1.0.1, all fixed:
+
+1. **Notification delivery was trusted, not verified** — `_notify_send` returned
+   `True` after the first *existing* binary ran, even if it exited non-zero
+   (e.g. `--app-name` on libnotify < 0.8). A silently-failed toast also recorded
+   its rate-limit state, swallowing the alert. Now: notify-send with app-name →
+   notify-send plain → kdialog, and only an exit-0 counts as delivered
+   (+ 2 new tests: 28 total).
+2. **`Persistent=true` removed from the timer** — systemd only honors it on
+   `OnCalendar=` timers; it was a no-op here. Post-boot coverage comes from
+   `OnBootSec=2min`, and the reboot-safe delta logic counts the whole gap at
+   the first run after boot anyway.
+3. **Windows installer fails loudly now** — a failed download used to be
+   swallowed (`-ErrorAction SilentlyContinue`) and could register a scheduled
+   task pointing at a missing script. It now throws before task registration.
+   Also added `systemctl --user import-environment` for notifications on X11
+   sessions.
+4. **Privacy scrub (public-release requirement)** — personal machine details
+   (hostname, hotspot name, per-app figures, process names from a private
+   machine) removed from `README.md` and `ChromeDataProbe.ps1`; replaced with
+   generic guidance. Source archives rebuilt from scrubbed sources (identical
+   manifests) and `SHA256SUMS.txt` regenerated. All tracking is local-only:
+   nothing is ever uploaded or published.
+
+**Self-contained installers** (this release): `install-linux.sh`,
+`install-windows.ps1`, `install-macos.sh` embed the full code — download once,
+install anywhere, no further network access needed.
+
+Archives: `releases/{linux,macos,windows}/DataUsageTracker-v1.0.2-*` (v1.0.1
+kept for reference, superseded).
+
+---
+
 Branch: `arena/01a04ccb-datausage-tracker`  
 PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 

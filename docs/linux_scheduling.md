@@ -66,7 +66,6 @@ Description=Run DataUsage Tracker every 30 minutes
 [Timer]
 OnBootSec=2min
 OnUnitActiveSec=30min
-Persistent=true
 AccuracySec=1min
 RandomizedDelaySec=90
 Unit=datausage-tracker.service
@@ -81,9 +80,11 @@ systemctl --user daemon-reload
 systemctl --user enable --now datausage-tracker.timer
 ```
 
-`Persistent=true` makes up for runs missed while the machine was powered off
-(parity with Windows' `StartWhenAvailable`). `AccuracySec` + `RandomizedDelaySec`
-let systemd coalesce wakeups, which is friendlier for laptop batteries.
+`OnBootSec=2min` guarantees a run shortly after boot; the reboot-safe delta
+logic counts everything that happened while powered off in that single run.
+`AccuracySec` + `RandomizedDelaySec` let systemd coalesce wakeups, which is
+friendlier for laptop batteries. (Note: `Persistent=true` only affects
+`OnCalendar=` timers, so it is deliberately not used here.)
 
 ---
 

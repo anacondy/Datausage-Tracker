@@ -188,20 +188,32 @@ def save_json_atomic(path, data):
 # KDE Plasma / freedesktop desktop notifications (REAL, threshold-based)
 # ----------------------------------------------------------------------------
 def _notify_send(summary, body, urgency="normal"):
-    """Send a freedesktop notification (KDE Plasma renders these natively)."""
-    for cmd in (
+    """Send a freedesktop notification (KDE Plasma renders these natively).
+
+    Tries, in order: notify-send with --app-name (libnotify >= 0.8, labels the
+    toast nicely on Plasma), plain notify-send (older libnotify), then kdialog
+    (KDE-native popup). Returns True ONLY if a command actually exited 0 —
+    a failed notification must never be recorded as delivered, or the
+    rate-limiter would swallow the alert.
+    """
+    commands = (
         ["notify-send", "--app-name=DataUsage Tracker", "-u", urgency,
          "-i", "network-transmit", summary, body],
+        ["notify-send", "-u", urgency, summary, body],
         ["kdialog", "--title", "DataUsage Tracker", "--passivepopup",
-         f"{summary}\n{body}", "10"],  # KDE-native fallback
-    ):
-        if shutil.which(cmd[0]):
-            try:
-                subprocess.run(cmd, check=False, timeout=5,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+         f"{summary}\n{body}", "10"],
+    )
+    for cmd in commands:
+        if not shutil.which(cmd[0]):
+            continue
+        try:
+            result = subprocess.run(cmd, timeout=5,
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL)
+            if result.returncode == 0:
                 return True
-            except Exception:
-                continue
+        except Exception:
+            continue
     return False
 
 
@@ -216,6 +228,10 @@ def maybe_notify(log_dir, interval_total, daily_total, now_ist):
     except ValueError:
         return
 
+    try:
+        os.makedirs(log_dir, exist_ok=True)   # never crash if the dir is missing
+    except OSError:
+        return
     state = load_json(os.path.join(log_dir, LAST_RUN_NAME), {})
     today = now_ist.strftime("%Y-%m-%d")
 

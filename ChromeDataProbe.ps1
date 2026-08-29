@@ -206,7 +206,7 @@ Write-Host ""
 # ---- metered-connection advice ------------------------------------------------
 Write-Host "  [7] Stop Windows + background downloads from using mobile data"
 Write-Host "  ------------------------------------------------------------------"
-Write-Host "  You are connected to a PHONE HOTSPOT ('realme 6i'). By default Windows"
+Write-Host "  If you use a PHONE HOTSPOT or other metered link: by default Windows"
 Write-Host "  treats it as an unmetered connection and freely downloads updates, app"
 Write-Host "  refreshes and background sync. Set it to METERED to stop that:"
 Write-Host "     Settings -> Network & internet -> Wi-Fi -> (your hotspot) -> "

@@ -21,6 +21,10 @@ releases/RELEASE_NOTES.md, releases/windows/*.zip, releases/linux/*.tar.gz, rele
 === PRIVACY ===
 Original README content (laptop info, screenshots) was ALREADY PUBLIC.
 Not created or exposed by this audit. Deploy/release builds focus on daemon/service.
+v1.0.2 (2026-08-29): per the owner's request for a fully public project, ALL
+personal machine details (hostname, hotspot name, per-app figures, process
+names) were REMOVED from README.md and ChromeDataProbe.ps1 and replaced with
+generic guidance; release archives rebuilt from the scrubbed sources.
 
 === DEPLOY ===
 Linux: deploy/linux/install.sh (systemd user service, MemoryMax=64M, Nice=-5, KDE optimized)

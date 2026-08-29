@@ -1,6 +1,9 @@
 # Windows Data Usage Monitor + Data Hog Finder
 
-Three PowerShell tools for your HP laptop (`onlysuccessair1`, Windows 11 Home):
+Three tools that show **how much data** your machine uses, **which app** used
+the most, and **what** is silently downloading it. The originals are Windows
+PowerShell; cross-platform (Linux / macOS) companions and background daemons
+are included (see [Linux / macOS section](#linux-arch--kde-plasma-and-macos)):
 
 1. **`DataUsageTracker.ps1`** – detects your **overall data usage** (hotspot Wi-Fi,
    USB-tethering/Ethernet, cable Ethernet — every adapter), tells you **which app**
@@ -39,8 +42,9 @@ those numbers on demand via Windows' own WinRT API — a fraction of a second. F
 long-term tracking it runs once every 30 min via Task Scheduler.
 
 ### IMPORTANT: it never resets or double-counts
-Your concern was: *does it break when I turn off the hotspot or unplug ethernet?*
-**No.** Here's how it guarantees correctness across every scenario:
+The question every user asks: *does it break when I turn off the hotspot or
+unplug ethernet?* **No.** Here's how it guarantees correctness across every
+scenario:
 
 | Situation | What happens |
 |-----------|--------------|
@@ -92,46 +96,41 @@ live Chrome processes:
 ```
 It reports: process memory map, **open tab titles**, active internet connections with
 resolved hostnames, known silent data consumers, and **other hidden downloaders**
-(torrents, updaters, cloud sync — it caught a `gbittorrent.exe` in your screenshots!).
+(torrents, updaters, cloud sync — the classic silent data hogs).
 
 ---
 
-## 🔍 Diagnosing YOUR 2 GB chrome spike (from your screenshots)
+## 🔍 Diagnosing silent data spikes ("2 GB gone, nothing visible downloaded")
 
-What your own screenshots showed:
-- Network = **phone hotspot "realme 6i"** (2.4 GHz, 72 Mbps, Open).
-- **Last 24 h on that hotspot = 2.02 GB.** Last 30 days = 3.45 GB.
-- Per-app (30 days): **chrome.exe 2.07 GB**, msedge 837 MB, System/Windows Update 367 MB.
-- **In the "last 24 hours" per-app list chrome is NOT shown** — that's the known
-  Windows per-app **undercount/lag bug**, not proof chrome didn't use it.
-- Task Manager shows **Chrome (10 processes, ~985 MB)** and **a Bittorrent client
-  (`gbittorrent.exe`)** both running.
-
-**The most likely cause of "2 GB with no visible download":** a background tab or
-Chrome background feature silently streaming/syncing. In order of likelihood:
+The usual cause of a big spike with no visible download is a background tab or
+browser background feature silently streaming/syncing. In order of likelihood:
 1. **A tab left open playing audio/video** (YouTube, a music player, etc.) — streams
    for hours, no file download appears. **Press Shift+Esc inside Chrome** → Chrome's
    own Task Manager → sort by **Network** → the guilty tab shows huge bytes. Close it.
-2. **Chrome "background apps"** (Gmail, Drive, WhatsApp Web, etc.) continue after you
-   close the browser → `chrome://settings/system` → turn OFF "Continue running
-   background apps".
-3. **Extensions** doing background work → `chrome://extensions` → disable unneeded.
+2. **Browser "background apps"** continue after you close the browser →
+   `chrome://settings/system` → turn OFF "Continue running background apps".
+3. **Extensions** doing background work → `chrome://extensions` → disable unneeded ones.
 4. **Pre-fetch / preload** of pages you never opened → `chrome://settings/privacy`.
-5. **Chrome sync / backup** pushing data.
-6. **The Bittorrent client** (`gbittorrent.exe`) seeding/downloading in the background
-   — check/close it (it's a classic silent data hog).
+5. **Browser sync / cloud backup** pushing data in the background.
+6. **A torrent client** seeding/downloading in the background — check or close it
+   (a classic silent data hog; seeding counts as upload).
 
-**Biggest single fix for your mobile data:** your hotspot is currently treated as an
-**unmetered** connection, so Windows + background apps download freely. Set the
-hotspot to **Metered**:
-`Settings → Network & internet → Wi-Fi → (realme 6i) → Metered connection → ON`.
-That stops Windows Update, Store and many background apps from eating your SIM data.
+**Biggest single fix on mobile data:** if you use a phone hotspot, Windows treats
+new networks as **unmetered** by default, so Windows Update, Store and many
+background apps download freely. Set the connection to **Metered**:
+`Settings → Network & internet → Wi-Fi → (your hotspot) → Metered connection → ON`.
+That stops most background consumption of your SIM data.
 
-> **One caveat about SIM vs PC:** the 2–3 GB was charged to your SIM only if the
-> internet path went **through the phone** (hotspot/USB tethering). If the PC was on
-> cable broadband instead, the spike came from the **phone itself** — check the
-> phone's own Mobile-data-usage screen to see which app (YouTube, Photos backup,
-> Play Store, Chrome) used it.
+> **Privacy by design:** this project never uploads, stores or publishes *your*
+> numbers anywhere — everything is computed locally and written only to
+> `%USERPROFILE%\DataUsageLogs` / `~/DataUsageLogs` on **your own machine**.
+> The examples in this README are generic; nothing here comes from any user's
+> real machine.
+
+> **One caveat about SIM vs PC:** data is charged to your SIM only if the internet
+> path went **through the phone** (hotspot/USB tethering). If the PC was on another
+> connection instead, the spike came from the **phone itself** — check the phone's
+> own mobile-data-usage screen to see which app used it.
 
 ---
 
@@ -152,8 +151,9 @@ curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-data
 
 - Runs every 30 min with genuinely low-power flags a user service may actually
   set (`Nice=10`, idle CPU/IO scheduling, `CPUQuota=10%`, `MemoryMax=64M`).
-- Timer is battery-friendly (`AccuracySec=1min`, `RandomizedDelaySec=90`) and
-  catches up missed runs after power-off (`Persistent=true`).
+- Timer is battery-friendly (`AccuracySec=1min`, `RandomizedDelaySec=90`); a
+  guaranteed post-boot run (`OnBootSec=2min`) captures everything that happened
+  while powered off, via the reboot-safe delta logic.
 - Real KDE Plasma **desktop notifications** via `notify-send` when usage
   crosses a threshold (512 MB/interval, 2 GB/day defaults). On Arch:
   `sudo pacman -S libnotify`.

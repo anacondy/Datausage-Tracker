@@ -28,7 +28,13 @@ foreach ($f in $files) {
     $uri = "$RepoUrl/raw/$Branch/$f"
     $out = Join-Path $InstallDir $f
     if (-not $Quiet) { Write-Host "  Downloading $f ..." }
-    Invoke-WebRequest -Uri $uri -UseBasicParsing -OutFile $out -ErrorAction SilentlyContinue
+    try {
+        Invoke-WebRequest -Uri $uri -UseBasicParsing -OutFile $out -ErrorAction Stop
+    } catch {
+        # Fail loudly: registering a scheduled task that points at a missing
+        # script would silently produce a dead daemon.
+        throw "[DataUsageTracker] FATAL: could not download '$f' ($uri): $($_.Exception.Message). No task was registered. Check your connection and retry."
+    }
 }
 
 # Download docs, tests, dashboard
@@ -43,6 +49,9 @@ Invoke-WebRequest -Uri "$RepoUrl/raw/$Branch/ui/index.html" -UseBasicParsing -Ou
 # Register scheduled task (low-power tracker running every 30 min) — the daemon
 $TaskName = "DataUsageTracker"
 $ScriptPath = Join-Path $InstallDir "DataUsageTracker.ps1"
+if (-not (Test-Path $ScriptPath)) {
+    throw "[DataUsageTracker] FATAL: $ScriptPath is missing — aborting before task registration."
+}
 $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" -Log -Quiet"
 $TriggerLogon = New-ScheduledTaskTrigger -AtLogOn
 $TriggerRepeat = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 3650)
