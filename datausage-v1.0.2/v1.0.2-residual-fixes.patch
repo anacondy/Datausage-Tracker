@@ -1,0 +1,315 @@
+diff --git a/FIXES_APPLIED.md b/FIXES_APPLIED.md
+index e4d8083..ba225b7 100644
+--- a/FIXES_APPLIED.md
++++ b/FIXES_APPLIED.md
+@@ -43,3 +43,14 @@ and, where possible, executed live.
+ - `bash -n deploy/linux/install.sh` — clean
+ - `systemd-analyze verify` on both units — clean (exit 0)
+ - `node --check` on dashboard JS — clean
++
++---
++
++## v1.0.2 addendum — residual sweep (release-ready pass)
++
++| # | Finding | Fix | Where |
++|---|---|---|---|
++| 14 | `_notify_send` trusted exit — `check=False` meant a *failed* notify-send (e.g. `--app-name` on libnotify < 0.8) still returned True AND recorded rate-limit state, silently swallowing the alert | Exit-code-checked fallback chain: notify-send `--app-name` → notify-send plain → kdialog; only exit-0 counts as delivered; +2 tests (26→28) | `python/data_tracker_cross_platform.py`, `tests/test_delta_methodology.py` |
++| 15 | `Persistent=true` is a no-op on monotonic (`OnBootSec`/`OnUnitActiveSec`) timers — systemd honors it only with `OnCalendar=` | Removed; comment now explains post-boot coverage comes from `OnBootSec=2min` + reboot-safe deltas | `deploy/linux/install.sh` |
++| 16 | Windows installer swallowed download failures (`-ErrorAction SilentlyContinue`) → could register a task pointing at a missing script | Fail-fast `try/catch` + `Test-Path` guard before task registration | `deploy/windows/install.ps1` |
++| 17 | Notifications could fail on X11 sessions where the systemd user manager lacks `DISPLAY` | `systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP` before enabling | `deploy/linux/install.sh` |
+diff --git a/README.md b/README.md
+index 196e538..bfc690e 100644
+--- a/README.md
++++ b/README.md
+@@ -152,8 +152,9 @@ curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-data
+ 
+ - Runs every 30 min with genuinely low-power flags a user service may actually
+   set (`Nice=10`, idle CPU/IO scheduling, `CPUQuota=10%`, `MemoryMax=64M`).
+-- Timer is battery-friendly (`AccuracySec=1min`, `RandomizedDelaySec=90`) and
+-  catches up missed runs after power-off (`Persistent=true`).
++- Timer is battery-friendly (`AccuracySec=1min`, `RandomizedDelaySec=90`); a
++  guaranteed post-boot run (`OnBootSec=2min`) captures everything that happened
++  while powered off, via the reboot-safe delta logic.
+ - Real KDE Plasma **desktop notifications** via `notify-send` when usage
+   crosses a threshold (512 MB/interval, 2 GB/day defaults). On Arch:
+   `sudo pacman -S libnotify`.
+diff --git a/deploy/README.md b/deploy/README.md
+index 965e1ef..5b889ac 100644
+--- a/deploy/README.md
++++ b/deploy/README.md
+@@ -32,9 +32,9 @@ What it does:
+ - Genuinely low-power for Arch / KDE Plasma, using only flags a user service
+   may set: `Nice=10`, `CPUSchedulingPolicy=idle`, `IOSchedulingClass=idle`,
+   `CPUQuota=10%`, `MemoryMax=64M`
+-- Timer is battery-friendly and matches Windows behavior: `Persistent=true`
+-  (catch up runs missed while powered off — parity with `StartWhenAvailable`),
+-  `AccuracySec=1min` + `RandomizedDelaySec=90` (coalesced wakeups)
++- Timer is battery-friendly: `OnBootSec=2min` guarantees the post-boot data
++  point (reboot-safe deltas count any gap in one go), and `AccuracySec=1min` +
++  `RandomizedDelaySec=90` coalesce wakeups
+ - Real KDE Plasma **desktop notifications** via `notify-send` (threshold-based:
+   512 MB per interval / 2 GB per day by default; Plasma renders them natively).
+   Requires `libnotify` (`sudo pacman -S libnotify` on Arch); tracking works
+@@ -90,7 +90,7 @@ All three platforms run a background service/daemon:
+ 
+ | Platform | Daemon Type | Schedule | Resource Limit | Optimized For |
+ |---|---|---|---|---|
+-| Linux / Arch | `systemd` user service + timer | Every 30 min (Persistent) | `MemoryMax=64M`, `CPUQuota=10%`, `Nice=10` + idle CPU/IO scheduling | KDE Plasma / Arch (yield-to-desktop, wakeup coalescing) |
++| Linux / Arch | `systemd` user service + timer | Every 30 min + 2 min after boot | `MemoryMax=64M`, `CPUQuota=10%`, `Nice=10` + idle CPU/IO scheduling | KDE Plasma / Arch (yield-to-desktop, wakeup coalescing) |
+ | Windows | `TaskScheduler` (user-level) | Every 30 min + logon | `ExecutionTimeLimit=3min` | Low battery / low CPU |
+ | macOS | `launchd` agent | Every 30 min (StartInterval=1800) | Nice=10 | Background efficiency |
+ 
+diff --git a/deploy/linux/install.sh b/deploy/linux/install.sh
+index 53ac34e..361249f 100755
+--- a/deploy/linux/install.sh
++++ b/deploy/linux/install.sh
+@@ -10,9 +10,9 @@
+ #   • Nice=10 + CPUSchedulingPolicy=idle + IOSchedulingClass=idle
+ #     (all legal for a systemd --user service; the process yields to everything)
+ #   • CPUQuota=10%, MemoryMax=64M (hard caps; real peak is ~13 MB)
+-#   • Timer: Persistent=true (catch up runs missed while powered off — matches
+-#     Windows' StartWhenAvailable), AccuracySec=1min + RandomizedDelaySec=90
+-#     (coalesces wakeups — friendlier for laptops/battery)
++#   • Timer: OnBootSec=2min covers post-boot (delta logic bridges any gap),
++#     AccuracySec=1min + RandomizedDelaySec=90 coalesce wakeups —
++#     friendlier for laptops/battery
+ #   • Real KDE Plasma notifications via notify-send (threshold-based,
+ #     rendered natively by Plasma), not just a "notify-send found" message
+ #   • Cheap hardening: NoNewPrivileges, PrivateTmp, ProtectSystem=full,
+@@ -106,15 +106,15 @@ SERVICE_EOF
+ # --------------------------------------------- systemd timer (battery-safe) -
+ cat > "$SERVICE_DIR/datausage-tracker.timer" << 'TIMER_EOF'
+ [Unit]
+-Description=Run DataUsage Tracker every 30 minutes (catches up after downtime)
++Description=Run DataUsage Tracker every 30 minutes
+ 
+ [Timer]
+ OnBootSec=2min
+ OnUnitActiveSec=30min
+-# Catch up one run if the machine was off when a run was due
+-# (parity with Windows' StartWhenAvailable):
+-Persistent=true
+-# Coalesce wakeups; allow jitter so we don't wake the laptop needlessly:
++# Monotonic timer: always runs 2 min after boot, so a machine that was off
++# never loses data — the delta logic counts the whole gap at the first run
++# after boot (reboot-safe by design). Persistent=true would be a no-op here:
++# systemd only honors it on OnCalendar= timers.
+ AccuracySec=1min
+ RandomizedDelaySec=90
+ Unit=datausage-tracker.service
+@@ -154,6 +154,9 @@ fi
+ 
+ # ------------------------------------------------------------ enable -------
+ if command -v systemctl &>/dev/null && systemctl --user daemon-reload 2>/dev/null; then
++    # Make sure desktop notifications can reach the user manager's env
++    # (needed on some X11/edge sessions where the user manager lacks DISPLAY).
++    systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2>/dev/null || true
+     systemctl --user enable --now datausage-tracker.timer \
+         && echo "[DataUsageTracker] Timer enabled and started (every 30 min)." \
+         || echo "Timer not started (may need a login session). Run manually: python3 $INSTALL_DIR/data_tracker.py"
+diff --git a/deploy/windows/install.ps1 b/deploy/windows/install.ps1
+index 0a098d7..681d8a8 100755
+--- a/deploy/windows/install.ps1
++++ b/deploy/windows/install.ps1
+@@ -28,7 +28,13 @@ foreach ($f in $files) {
+     $uri = "$RepoUrl/raw/$Branch/$f"
+     $out = Join-Path $InstallDir $f
+     if (-not $Quiet) { Write-Host "  Downloading $f ..." }
+-    Invoke-WebRequest -Uri $uri -UseBasicParsing -OutFile $out -ErrorAction SilentlyContinue
++    try {
++        Invoke-WebRequest -Uri $uri -UseBasicParsing -OutFile $out -ErrorAction Stop
++    } catch {
++        # Fail loudly: registering a scheduled task that points at a missing
++        # script would silently produce a dead daemon.
++        throw "[DataUsageTracker] FATAL: could not download '$f' ($uri): $($_.Exception.Message). No task was registered. Check your connection and retry."
++    }
+ }
+ 
+ # Download docs, tests, dashboard
+@@ -43,6 +49,9 @@ Invoke-WebRequest -Uri "$RepoUrl/raw/$Branch/ui/index.html" -UseBasicParsing -Ou
+ # Register scheduled task (low-power tracker running every 30 min) — the daemon
+ $TaskName = "DataUsageTracker"
+ $ScriptPath = Join-Path $InstallDir "DataUsageTracker.ps1"
++if (-not (Test-Path $ScriptPath)) {
++    throw "[DataUsageTracker] FATAL: $ScriptPath is missing — aborting before task registration."
++}
+ $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" -Log -Quiet"
+ $TriggerLogon = New-ScheduledTaskTrigger -AtLogOn
+ $TriggerRepeat = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 3650)
+diff --git a/docs/TESTING_FAILURE_MODES.md b/docs/TESTING_FAILURE_MODES.md
+index e328319..51a92f5 100644
+--- a/docs/TESTING_FAILURE_MODES.md
++++ b/docs/TESTING_FAILURE_MODES.md
+@@ -108,8 +108,8 @@ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
+ - **Per-app WinRT tracking** (`DataUsageTracker.ps1` per-app feature) — Windows ONLY. Linux/macOS have no equivalent to Windows SRUM database.
+ - **Scheduled background tracking** — Windows uses `Register-ScheduledTask`
+   built into the script. On Linux/macOS it is provided by the one-line
+-  installers (`deploy/linux/install.sh` → systemd user timer with
+-  `Persistent=true`; `deploy/macos/install.sh` → launchd agent), or manually
++  installers (`deploy/linux/install.sh` → systemd user timer with a
++  guaranteed post-boot run via `OnBootSec`; `deploy/macos/install.sh` → launchd agent), or manually
+   via `cron`/`systemd`/`launchd` (see `docs/linux_scheduling.md`).
+ - **Live TCP connection inspection** (`chrome_probe_cross_platform.py`) requires `psutil` — without it, process list is empty but script exits cleanly.
+ - **Browser download folder scanning** uses different profile paths per OS — Chrome/Firefox directories vary (`~/.config/google-chrome` vs `%LOCALAPPDATA%` vs `~/Library/Application Support`).
+diff --git a/docs/linux_scheduling.md b/docs/linux_scheduling.md
+index b16affa..9b5f922 100644
+--- a/docs/linux_scheduling.md
++++ b/docs/linux_scheduling.md
+@@ -66,7 +66,6 @@ Description=Run DataUsage Tracker every 30 minutes
+ [Timer]
+ OnBootSec=2min
+ OnUnitActiveSec=30min
+-Persistent=true
+ AccuracySec=1min
+ RandomizedDelaySec=90
+ Unit=datausage-tracker.service
+@@ -81,9 +80,11 @@ systemctl --user daemon-reload
+ systemctl --user enable --now datausage-tracker.timer
+ ```
+ 
+-`Persistent=true` makes up for runs missed while the machine was powered off
+-(parity with Windows' `StartWhenAvailable`). `AccuracySec` + `RandomizedDelaySec`
+-let systemd coalesce wakeups, which is friendlier for laptop batteries.
++`OnBootSec=2min` guarantees a run shortly after boot; the reboot-safe delta
++logic counts everything that happened while powered off in that single run.
++`AccuracySec` + `RandomizedDelaySec` let systemd coalesce wakeups, which is
++friendlier for laptop batteries. (Note: `Persistent=true` only affects
++`OnCalendar=` timers, so it is deliberately not used here.)
+ 
+ ---
+ 
+diff --git a/python/data_tracker_cross_platform.py b/python/data_tracker_cross_platform.py
+index a4e0ac5..85adb41 100644
+--- a/python/data_tracker_cross_platform.py
++++ b/python/data_tracker_cross_platform.py
+@@ -188,20 +188,32 @@ def save_json_atomic(path, data):
+ # KDE Plasma / freedesktop desktop notifications (REAL, threshold-based)
+ # ----------------------------------------------------------------------------
+ def _notify_send(summary, body, urgency="normal"):
+-    """Send a freedesktop notification (KDE Plasma renders these natively)."""
+-    for cmd in (
++    """Send a freedesktop notification (KDE Plasma renders these natively).
++
++    Tries, in order: notify-send with --app-name (libnotify >= 0.8, labels the
++    toast nicely on Plasma), plain notify-send (older libnotify), then kdialog
++    (KDE-native popup). Returns True ONLY if a command actually exited 0 —
++    a failed notification must never be recorded as delivered, or the
++    rate-limiter would swallow the alert.
++    """
++    commands = (
+         ["notify-send", "--app-name=DataUsage Tracker", "-u", urgency,
+          "-i", "network-transmit", summary, body],
++        ["notify-send", "-u", urgency, summary, body],
+         ["kdialog", "--title", "DataUsage Tracker", "--passivepopup",
+-         f"{summary}\n{body}", "10"],  # KDE-native fallback
+-    ):
+-        if shutil.which(cmd[0]):
+-            try:
+-                subprocess.run(cmd, check=False, timeout=5,
+-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
++         f"{summary}\n{body}", "10"],
++    )
++    for cmd in commands:
++        if not shutil.which(cmd[0]):
++            continue
++        try:
++            result = subprocess.run(cmd, timeout=5,
++                                    stdout=subprocess.DEVNULL,
++                                    stderr=subprocess.DEVNULL)
++            if result.returncode == 0:
+                 return True
+-            except Exception:
+-                continue
++        except Exception:
++            continue
+     return False
+ 
+ 
+@@ -216,6 +228,10 @@ def maybe_notify(log_dir, interval_total, daily_total, now_ist):
+     except ValueError:
+         return
+ 
++    try:
++        os.makedirs(log_dir, exist_ok=True)   # never crash if the dir is missing
++    except OSError:
++        return
+     state = load_json(os.path.join(log_dir, LAST_RUN_NAME), {})
+     today = now_ist.strftime("%Y-%m-%d")
+ 
+diff --git a/releases/RELEASE_NOTES.md b/releases/RELEASE_NOTES.md
+index 805f6e3..0ad498d 100644
+--- a/releases/RELEASE_NOTES.md
++++ b/releases/RELEASE_NOTES.md
+@@ -1,5 +1,33 @@
+ # Release Notes — DataUsageTracker
+ 
++## v1.0.2 — release-ready hardening (final sweep)
++
++Three residual issues found in an independent re-sweep of v1.0.1, all fixed:
++
++1. **Notification delivery was trusted, not verified** — `_notify_send` returned
++   `True` after the first *existing* binary ran, even if it exited non-zero
++   (e.g. `--app-name` on libnotify < 0.8). A silently-failed toast also recorded
++   its rate-limit state, swallowing the alert. Now: notify-send with app-name →
++   notify-send plain → kdialog, and only an exit-0 counts as delivered
++   (+ 2 new tests: 28 total).
++2. **`Persistent=true` removed from the timer** — systemd only honors it on
++   `OnCalendar=` timers; it was a no-op here. Post-boot coverage comes from
++   `OnBootSec=2min`, and the reboot-safe delta logic counts the whole gap at
++   the first run after boot anyway.
++3. **Windows installer fails loudly now** — a failed download used to be
++   swallowed (`-ErrorAction SilentlyContinue`) and could register a scheduled
++   task pointing at a missing script. It now throws before task registration.
++   Also added `systemctl --user import-environment` for notifications on X11
++   sessions.
++
++**Self-contained installers** (this release): `install-linux.sh`,
++`install-windows.ps1`, `install-macos.sh` embed the full code — download once,
++install anywhere, no further network access needed.
++
++---
++
++# Release Notes — DataUsageTracker
++
+ Branch: `arena/01a04ccb-datausage-tracker`  
+ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
+ 
+diff --git a/tests/test_delta_methodology.py b/tests/test_delta_methodology.py
+index d65f13b..44374a1 100644
+--- a/tests/test_delta_methodology.py
++++ b/tests/test_delta_methodology.py
+@@ -250,6 +250,26 @@ def test_dashboard():
+         print("  [SKIP] node not available — JS syntax check skipped")
+ 
+ 
++def test_notifications():
++    print("=== DESKTOP NOTIFICATIONS (resilience + honest delivery) ===")
++    e = Env()
++    try:
++        # v1.0.2 fix: a notification counts as delivered ONLY if the command
++        # exits 0. In this sandbox no notifier is installed at all:
++        check("_notify_send returns False when no notifier exists",
++              dt._notify_send("test", "body") is False)
++        os.environ["DATAUSAGE_NOTIFY"] = "1"
++        # must never raise nor break state even with DATAUSAGE_NOTIFY=1 and no notifier:
++        dt.maybe_notify(e.log_dir, 10**9, 10**9, dt.ist_now())
++        state = json.load(open(os.path.join(e.log_dir, dt.LAST_RUN_NAME)))
++        check("failed notification not recorded as delivered",
++              "LastIntervalNotifyUtc" not in state and
++              "LastDailyNotifyDate" not in state, str(state))
++    finally:
++        os.environ.pop("DATAUSAGE_NOTIFY", None)
++        e.cleanup()
++
++
+ def main():
+     print("DataUsageTracker — delta methodology functional tests")
+     print(f"Python {sys.version.split()[0]}, repo {REPO}\n")
+@@ -260,6 +280,7 @@ def main():
+     test_state_files()
+     test_csv_matches_windows_columns()
+     test_ist_offset()
++    test_notifications()
+     test_dashboard()
+     print(f"\n=== SUMMARY: {PASS} passed, {FAIL} failed ===")
+     sys.exit(1 if FAIL else 0)
