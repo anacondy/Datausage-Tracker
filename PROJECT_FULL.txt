@@ -12,7 +12,7 @@ docs/ (SECURITY_AUDIT.md, METHODOLOGY_TEST_REPORT.md, CROSS_PLATFORM_ASSESSMENT.
 UI_OPTIMIZATION.md, linux_scheduling.md, TESTING_FAILURE_MODES.md)
 
 tests/test_cross_platform.py
-ui/index.html, ui/ui_preview.png
+ui/index.html (ui_preview.png AI mockup removed 2026-08-29: unrelated concept art, implied features that do not exist)
 python/ (data_tracker_cross_platform.py, find_data_hog_cross_platform.py, chrome_probe_cross_platform.py)
 
 deploy/README.md, deploy/linux/install.sh, deploy/windows/install.ps1, deploy/macos/install.sh
