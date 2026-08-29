@@ -30,3 +30,20 @@ One-line commands in deploy/README.md.
 
 === PR STATUS ===
 Open. Not merged. All progress saved to arena/01a029b8-datausage-tracker.
+
+=== AUDIT FIXES (2026-08-29, branch arena/01a04ccb-datausage-tracker) ===
+AUDIT_REPORT.md (independent audit) was committed; all its blocking findings
+were then fixed on this branch — see FIXES_APPLIED.md for the mapping:
+- Linux/macOS tracker rewritten: CSV append + baseline.json + reboot-safe
+  deltas + dedup guard + loopback excluded + atomic writes (v1.0.0 overwrote
+  its log every run and never accumulated).
+- ui/index.html JS SyntaxError (literal \n) fixed; full HTML escaping added.
+- Arch/KDE systemd units corrected: Nice=-5 (impossible for user services)
+  replaced by Nice=10 + idle CPU/IO + CPUQuota=10%; timer gained Persistent,
+  AccuracySec, RandomizedDelaySec; hardening added; verify-clean.
+- Real KDE Plasma notifications (notify-send/kdialog, threshold-based).
+- Windows: atomic baseline writes; absent-adapter baselines preserved
+  (new defect found during the port; fixed on both platforms).
+- Releases rebuilt as v1.0.1; broken v1.0.0 archives removed.
+- New functional tests: tests/test_delta_methodology.py (26 checks, all pass).
+- One-liners cheat sheet: audit/ONE_LINERS.md.

@@ -114,7 +114,8 @@ tbody tr:hover td { background: rgba(255,255,255,0.03); }
       <li><strong>Delta computation</strong> — compares current adapter counters against stored baselines.</li>
       <li><strong>Reboot-safe</strong> — detects adapter counter resets and treats them as new usage (no double counting).</li>
       <li><strong>Low power</strong> — does not poll continuously; reads existing OS counters on demand.</li>
-      <li><strong>Scheduled tracking</strong> — a Windows Task Scheduler entry runs every 30 minutes.</li>
+      <li><strong>Scheduled tracking</strong> — every 30 minutes (Windows Task Scheduler, or a systemd user timer on Linux / launchd on macOS).</li>
+      <li><strong>Loopback excluded</strong> — local-only traffic is not counted on Linux, so local proxies are not double-counted.</li>
     </ul>
   </section>
 
@@ -138,13 +139,23 @@ function formatBytes(bytesStr) {
 function detectKind(rows) {
   const firstRow = rows[0] || {};
   const headers = firstRow ? Object.keys(firstRow) : [];
-  if (headers.some(h => h.toLowerCase().includes('adapter') || h.toLowerCase().includes('adapter'))) return 'adapter';
+  if (headers.some(h => h.toLowerCase().includes('adapter'))) return 'adapter';
   if (headers.some(h => h.toLowerCase().includes('app') || h.toLowerCase().includes('appname') || h.toLowerCase().includes('profile'))) return 'app';
   return 'unknown';
 }
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderTable(headers, rows) {
-  let html = '<table><thead><tr>';\n  headers.forEach(h => html += '<th>' + String(h).replace(/</g, '&lt;') + '</th>');
+  let html = '<table><thead><tr>';
+  headers.forEach(h => html += '<th>' + escapeHtml(h) + '</th>');
   html += '</tr></thead><tbody>';
   rows.slice(0, 40).forEach(row => {
     html += '<tr>';
@@ -157,7 +168,7 @@ function renderTable(headers, rows) {
       } else if (h.toLowerCase().includes('date') || h.toLowerCase().includes('time') || h.toLowerCase().includes('timestamp')) {
         cellClass = 'date';
       }
-      html += '<td data-label="' + String(h).replace(/"/g, '&quot;') + '" class="' + cellClass + '">' + (v ? v.replace(/</g, '&lt;') : '<span style="opacity:.4;">—</span>') + '</td>';
+      html += '<td data-label="' + escapeHtml(h) + '" class="' + cellClass + '">' + (v ? escapeHtml(v) : '<span style="opacity:.4;">&mdash;</span>') + '</td>';
     });
     html += '</tr>';
   });

@@ -1,8 +1,15 @@
 # Testing Across Environments & Failure Mode Analysis
 
-Date: 2026-08-22  
-Branch: arena/01a029b8-datausage-tracker  
+Date: 2026-08-22 (revised 2026-08-29 after independent audit)  
+Branch: arena/01a04ccb-datausage-tracker  
 PR: https://github.com/anacondy/Datausage-Tracker/pull/1
+
+> **v1.0.1 corrections (per AUDIT_REPORT.md):** the Arch/KDE row below no longer
+> claims `Nice=-5` (impossible for unprivileged user services) and desktop
+> notifications are now actually implemented, not merely checked. The
+> "`/proc/net/dev` and psutil fallback" wording has been corrected: on Linux the
+> tracker reads `/proc/net/dev` directly (it always exists on Linux); `psutil`
+> is only consulted on the unusual no-/proc case and on non-Linux platforms.
 
 ---
 
@@ -11,7 +18,7 @@ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 | Environment | Method | Status | Notes |
 |---|---|---|---|
 | Linux Sandbox (this workspace) | Python `test_cross_platform.py` passed | VERIFIED | File integrity, syntax, security patterns, cross-platform readiness |
-| Arch Linux + KDE Plasma | `systemd` user service (`datausage-tracker.service`) designed with `Nice=-5`, `MemoryMax=64M`, `IOSchedulingClass=best-effort`, `CPUSchedulingPolicy=idle` | READY | `notify-send` check included; requires `libnotify` for desktop notifications |
+| Arch Linux + KDE Plasma | `systemd` user service (`datausage-tracker.service`) with `Nice=10`, `MemoryMax=64M`, `IOSchedulingClass=idle`, `CPUSchedulingPolicy=idle`, `CPUQuota=10%` | READY | Real `notify-send` desktop notifications (threshold-based); requires `libnotify`. v1.0.0 claimed `Nice=-5`, which is impossible for unprivileged user services — corrected. |
 | Linux (non-systemd) | Manual execution: `python3 python/data_tracker_cross_platform.py` | READY | Falls back gracefully; writes CSV to `~/DataUsageLogs/` |
 | Windows 11 | `.ps1` scripts + `.bat` launchers + `TaskScheduler` | READY | `DataUsageTracker` registered; runs every 30 min |
 | macOS | `launchd` agent (`com.datausage.tracker`) + `python3` scripts | READY | `StartInterval=1800`; `Nice=10` in plist terms |
@@ -29,13 +36,18 @@ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 
 ### 2. Linux — `/proc/net/dev` Unreadable
 - **Cause**: Restricted container or custom kernel without `/proc` access.
-- **Behavior**: `read_adapter_stats_linux()` returns empty dict; script prints "No adapter statistics available."
-- **Recovery**: Uses `psutil` if installed (`pip install psutil`) for adapter stats.
-- **Mitigation**: Python script tries both `/proc/net/dev` and `psutil` fallback.
+- **Behavior**: `read_adapters_linux()` returns empty dict.
+- **Recovery**: v1.0.1 tracker detects the missing/unreadable `/proc/net/dev`
+  and falls back to `psutil` if installed (`pip install psutil`); otherwise it
+  prints "No adapter statistics available." and exits cleanly.
+- **Note (audit correction)**: on any normal Linux box `/proc/net/dev` is
+  ALWAYS present, so `/proc/net/dev` is the primary path and `psutil` is only a
+  fallback for the unusual no-/proc case. The earlier wording overstated this.
 
 ### 3. Linux — `psutil` Not Installed
 - **Cause**: Minimal container or fresh install without `pip`.
-- **Behavior**: Adapter tracking works via `/proc/net/dev`; `chrome_probe_cross_platform.py` prints warning and returns limited results.
+- **Behavior**: Adapter tracking works via `/proc/net/dev` (no psutil needed);
+  `chrome_probe_cross_platform.py` prints warning and returns limited results.
 - **Recovery**: `pip install psutil` (documented in script output and `RELEASE_NOTES.md`).
 
 ### 4. Windows — `WinRT` API Unavailable
@@ -80,7 +92,8 @@ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 
 | Feature | Linux | Windows | macOS |
 |---|---|---|---|
-| Adapter byte tracking (read-only OS counters) | `/proc/net/dev` or `psutil` | `Get-NetAdapterStatistics` | `psutil` |
+| Adapter byte tracking (read-only OS counters) | `/proc/net/dev` (psutil only if `/proc` unavailable) | `Get-NetAdapterStatistics` | `psutil` |
+| Delta / append / reboot-safe methodology | Yes (v1.0.1 port of the Windows logic) | Yes (original) | Yes (v1.0.1 port) |
 | CSV logging | `~/DataUsageLogs/` | `%USERPROFILE%\DataUsageLogs\` | `~/DataUsageLogs/` |
 | HTML dashboard (`ui/index.html`) | Any browser | Any browser | Any browser |
 | Security audit available (`docs/SECURITY_AUDIT.md`) | Readable | Readable | Readable |
@@ -93,7 +106,11 @@ PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 ## What Does NOT Work (Documented Limitations)
 
 - **Per-app WinRT tracking** (`DataUsageTracker.ps1` per-app feature) — Windows ONLY. Linux/macOS have no equivalent to Windows SRUM database.
-- **Scheduled background tracking** requires manual setup on Linux/macOS (`cron`, `systemd`, `launchd`) — the `.ps1` uses `Register-ScheduledTask` which is Windows-only.
+- **Scheduled background tracking** — Windows uses `Register-ScheduledTask`
+  built into the script. On Linux/macOS it is provided by the one-line
+  installers (`deploy/linux/install.sh` → systemd user timer with
+  `Persistent=true`; `deploy/macos/install.sh` → launchd agent), or manually
+  via `cron`/`systemd`/`launchd` (see `docs/linux_scheduling.md`).
 - **Live TCP connection inspection** (`chrome_probe_cross_platform.py`) requires `psutil` — without it, process list is empty but script exits cleanly.
 - **Browser download folder scanning** uses different profile paths per OS — Chrome/Firefox directories vary (`~/.config/google-chrome` vs `%LOCALAPPDATA%` vs `~/Library/Application Support`).
 

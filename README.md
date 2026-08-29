@@ -135,6 +135,36 @@ That stops Windows Update, Store and many background apps from eating your SIM d
 
 ---
 
+## Linux (Arch + KDE Plasma) and macOS
+
+The `python/` directory contains cross-platform ports. As of **v1.0.1**
+(post-audit, see `AUDIT_REPORT.md` and `FIXES_APPLIED.md`), the Linux tracker
+is a faithful port of the Windows delta methodology — it **accumulates** usage
+(CSV append + `baseline.json`), is reboot-safe, has the same 15-second dedup
+guard, excludes loopback traffic, and writes the **same CSV columns** as
+Windows, so the same `ui/index.html` dashboard works for both.
+
+One-line install for Arch / KDE Plasma (systemd user service + timer, no root):
+
+```bash
+curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/linux/install.sh | bash
+```
+
+- Runs every 30 min with genuinely low-power flags a user service may actually
+  set (`Nice=10`, idle CPU/IO scheduling, `CPUQuota=10%`, `MemoryMax=64M`).
+- Timer is battery-friendly (`AccuracySec=1min`, `RandomizedDelaySec=90`) and
+  catches up missed runs after power-off (`Persistent=true`).
+- Real KDE Plasma **desktop notifications** via `notify-send` when usage
+  crosses a threshold (512 MB/interval, 2 GB/day defaults). On Arch:
+  `sudo pacman -S libnotify`.
+- Status / uninstall: `bash install.sh --status` / `bash install.sh --uninstall`
+  (see `audit/ONE_LINERS.md` for the full cheat sheet).
+
+Per-app (WinRT SRUM) tracking stays Windows-only — that's an OS limitation,
+documented in `docs/CROSS_PLATFORM_ASSESSMENT.md`.
+
+---
+
 ## Verifying correctness of the tracker
 Each `-Log` writes exactly one non-overlapping interval. You can cross-check totals:
 - Compare `DataUsage_Log.csv` `Lifetime_Total` (never resets) with

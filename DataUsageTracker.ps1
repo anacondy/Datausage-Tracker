@@ -378,7 +378,9 @@ function Save-LogPoint {
         }
     }
 
-    # --- store new baseline -----------------------------------------------------
+    # --- store new baseline -------------------------------------------------
+    # Atomic write (tmp file + rename) so a power-cut mid-write can't corrupt
+    # the baseline and cause a one-time over-report on the next run.
     $newBase = [ordered]@{
         LastRunUtc = $nowUtc
         Adapters   = [ordered]@{}
@@ -387,10 +389,28 @@ function Save-LogPoint {
     foreach ($a in $cur.Values) {
         $newBase.Adapters[$a.Adapter] = [ordered]@{ Received = $a.Received; Sent = $a.Sent }
     }
-    $newBase | ConvertTo-Json -Depth 6 | Set-Content -Path $BaselineFile -Encoding UTF8
+    $tmpBase = "$BaselineFile.tmp"
+    # Preserve baselines of adapters that are temporarily absent (hotspot off,
+    # ethernet unplugged) so they rejoin with an exact delta instead of
+    # over-reporting their whole current counter:
+    $prevNames = @()
+    if ($baseline.Adapters) {
+        if ($baseline.Adapters -is [hashtable]) { $prevNames = @($baseline.Adapters.Keys) }
+        else { $prevNames = @($baseline.Adapters.PSObject.Properties.Name) }
+    }
+    foreach ($name in $prevNames) {
+        if (-not $newBase.Adapters.Contains($name)) {
+            $prevAd = if ($baseline.Adapters -is [hashtable]) { $baseline.Adapters[$name] } else { $baseline.Adapters.$name }
+            $newBase.Adapters[$name] = [ordered]@{ Received = [uint64]$prevAd.Received; Sent = [uint64]$prevAd.Sent }
+        }
+    }
+    $newBase | ConvertTo-Json -Depth 6 | Set-Content -Path $tmpBase -Encoding UTF8
+    Move-Item -Force -Path $tmpBase -Destination $BaselineFile
 
     # remember this write time for the dedup guard:
-    [ordered]@{ LastLogUtc = $nowUtc } | ConvertTo-Json | Set-Content -Path $lastLogFile -Encoding UTF8
+    $tmpLast = "$lastLogFile.tmp"
+    [ordered]@{ LastLogUtc = $nowUtc } | ConvertTo-Json | Set-Content -Path $tmpLast -Encoding UTF8
+    Move-Item -Force -Path $tmpLast -Destination $lastLogFile
 
     if (-not $Quiet) {
         Write-Host ("Log point written: {0} at {1}" -f $dateStr, $timeStr)

@@ -1,5 +1,5 @@
 # One-line install for Windows (PowerShell / CMD)
-# Usage (PowerShell): iwr -useb https://github.com/anacondy/Datausage-Tracker/raw/arena/01a029b8-datausage-tracker/deploy/windows/install.ps1 | iex
+# Usage (PowerShell): iwr -useb https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/windows/install.ps1 | iex
 # Usage (CMD): powershell -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://...' -UseBasicParsing).Content"
 
 [CmdletBinding()]
@@ -9,7 +9,7 @@ param(
 )
 
 $RepoUrl = "https://github.com/anacondy/Datausage-Tracker"
-$Branch = "arena/01a029b8-datausage-tracker"
+$Branch = "arena/01a04ccb-datausage-tracker"
 
 Write-Host "[DataUsageTracker Windows Install] Installing to $InstallDir ..." -ForegroundColor Cyan
 

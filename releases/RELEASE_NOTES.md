@@ -1,48 +1,73 @@
-# Release Notes — DataUsageTracker v1.0.0
+# Release Notes — DataUsageTracker
 
-Branch: `arena/01a029b8-datausage-tracker`  
-PR: https://github.com/anacondy/Datausage-Tracker/pull/1  
-Commit: `93177bd`
-
----
-
-## What Was Released
-
-### Windows (`releases/windows/DataUsageTracker-v1.0.0-windows.zip`)
-**Status: STABLE — Full functionality**
-
-Contains the original PowerShell scripts and all audit artifacts:
-- `DataUsageTracker.ps1` — adapter + per-app usage tracking (WinRT)
-- `FindDataHog.ps1` — download scanner
-- `ChromeDataProbe.ps1` — browser process inspection
-- `.bat` launchers with defensive PowerShell checks
-- Full docs (`docs/`) including Security Audit, Methodology Report, Cross-Platform Assessment, UI Optimization
-- `tests/test_cross_platform.py` — structural validation framework
-- `ui/index.html` — browser-based CSV dashboard
-
-**Requirements**: Windows 11 (PowerShell 5.1+ or PowerShell 7+). WinRT APIs (`Windows.Networking`) are used for per-app tracking.
+Branch: `arena/01a04ccb-datausage-tracker`  
+PR: https://github.com/anacondy/Datausage-Tracker/pull/1
 
 ---
 
-### Linux (`releases/linux/DataUsageTracker-v1.0.0-linux.tar.gz`)
-**Status: STABLE — Adapter-level tracking only (no per-app WinRT equivalent)**
+## v1.0.1 — current (post-audit fixes, 29 August 2026)
 
-Contains Python 3 alternatives using standard library (`/proc/net/dev`) and optional `psutil`:
-- `python/data_tracker_cross_platform.py` — adapter byte counters, CSV logging
-- `python/find_data_hog_cross_platform.py` — file scanning for recent downloads
-- `docs/` — same audit reports (for reference)
-- `ui/index.html` — same HTML dashboard (works with exported CSV)
+Built after the independent audit (`AUDIT_REPORT.md`). See `FIXES_APPLIED.md`
+for the finding-by-finding mapping. Highlights:
 
-**Requirements**: Python 3.7+. For full adapter statistics, install `psutil` (`pip install psutil`). Per-app usage tracking (like Windows WinRT SRUM) is **not available** on Linux — this is an OS limitation, not a script limitation.
+- **Linux/macOS tracker rewritten** as a faithful port of the Windows delta
+  methodology: CSV **append** (v1.0.0 overwrote its log every run, so nothing
+  ever accumulated), `baseline.json` + lifetime totals, reboot-safe deltas,
+  15-second dedup guard, loopback excluded, atomic state writes.
+- **Dashboard fixed** — v1.0.0 shipped a literal `\n` token that caused a JS
+  SyntaxError and killed the upload button. Now parses (`node --check`) and
+  HTML-escapes all rendered values.
+- **Arch/KDE units corrected** — v1.0.0's `Nice=-5` was impossible for an
+  unprivileged user service. v1.0.1 uses `Nice=10` + idle CPU/IO scheduling +
+  `CPUQuota=10%`, plus `Persistent=true` and wakeup coalescing on the timer,
+  and cheap hardening. Verified with `systemd-analyze verify`.
+- **Real KDE Plasma notifications** — threshold-based (512 MB/interval,
+  2 GB/day defaults) via `notify-send` (`kdialog` fallback), not just a
+  "notify-send found" message.
+- **Windows hardening** — baseline/last-run state written atomically (tmp +
+  rename); absent-adapter baselines preserved so rejoins don't over-report.
+- **New functional test suite** — `tests/test_delta_methodology.py` (26 checks)
+  executes the counting logic instead of only counting braces.
+
+### Windows (`releases/windows/DataUsageTracker-v1.0.1-windows.zip`)
+**Status: STABLE — full functionality**
+
+PowerShell scripts (WinRT per-app + adapter tracking, atomic state writes),
+`.bat` launchers, docs, structural + functional tests, fixed HTML dashboard.
+Requirements: Windows 11 (PowerShell 5.1+ or 7+).
+
+### Linux (`releases/linux/DataUsageTracker-v1.0.1-linux.tar.gz`)
+**Status: STABLE — adapter-level tracking with full delta methodology**
+
+Python 3 tracker (stdlib only on Linux — reads `/proc/net/dev` directly;
+`psutil` used only on the unusual no-`/proc` case), download scanner, browser
+probe, fixed dashboard, corrected systemd installer (`deploy/linux/install.sh`),
+scheduling + failure-mode docs.
+Requirements: Python 3.9+ (Arch is always fine), systemd for the timer.
+Per-app (WinRT SRUM) tracking is **not available** on Linux — an OS
+limitation, not a script limitation.
+
+### macOS (`releases/macos/DataUsageTracker-v1.0.1-macos.tar.gz`)
+**Status: STABLE — adapter-level tracking with full delta methodology**
+
+Same Python payload as Linux plus the `launchd` installer
+(`deploy/macos/install.sh`). Per-interface stats use `psutil`
+(`pip install psutil`) since macOS has no `/proc`.
+
+> Honesty note: the Linux and macOS payloads share the same cross-platform
+> Python scripts by design. v1.0.0 shipped them byte-identical with only a
+> relabel; v1.0.1 tarballs include each platform's own installer and are
+> labeled accordingly.
 
 ---
 
-### macOS (`releases/macos/DataUsageTracker-v1.0.0-macos.tar.gz`)
-**Status: STABLE — Adapter-level tracking (same as Linux package)**
+## v1.0.0 — SUPERSEDED, archives removed
 
-Same Python scripts as Linux release. Works on macOS with Python 3.7+.
-
-**Requirements**: Python 3.7+. `psutil` recommended (`pip install psutil`) for adapter statistics. Per-app usage tracking (WinRT equivalent) is **not available** on macOS.
+The v1.0.0 archives were **removed from this repository** because the audit
+proved they shipped: (1) a broken HTML dashboard (JS SyntaxError — upload
+button did nothing), and (2) a Linux tracker that overwrote its CSV every
+run and therefore never accumulated usage. The historical record of what
+v1.0.0 claimed is in the audit report; do not redistribute v1.0.0 builds.
 
 ---
 
@@ -50,11 +75,13 @@ Same Python scripts as Linux release. Works on macOS with Python 3.7+.
 
 | Feature | Windows | Linux | macOS |
 |---|---|---|---|
-| Adapter byte tracking (`DataUsageTracker`) | Full (WinRT + `Get-NetAdapterStatistics`) | Partial (`/proc/net/dev` or `psutil`) | Partial (`psutil` or Python standard lib) |
-| Per-app usage (`DataUsageTracker`) | Full (WinRT `GetAttributedNetworkUsageAsync`) | Not possible (no SRUM equivalent) | Not possible |
-| Download scanning (`FindDataHog`) | Full (browser prefs + folder scan) | Partial (`~/.config/chrome`, `~/.mozilla/firefox`) | Partial (`~/Library/Application Support/`) |
-| Browser process probe (`ChromeDataProbe`) | Full (`Get-Process`, `Get-NetTCPConnection`) | Not included in Python package | Not included in Python package |
-| Scheduled background tracking | Full (Windows Task Scheduler) | Not included (`cron` or `systemd` would be needed) | Not included (`launchd` would be needed) |
+| Adapter byte tracking | Full (WinRT + `Get-NetAdapterStatistics`) | Full (`/proc/net/dev`, deltas + lifetime) | Full (`psutil`, deltas + lifetime) |
+| Reboot-safe accumulation | Full | Full (v1.0.1) | Full (v1.0.1) |
+| Per-app usage | Full (WinRT `GetAttributedNetworkUsageAsync`) | Not possible (no SRUM equivalent) | Not possible |
+| Download scanning (`FindDataHog`) | Full | Partial (Linux profile paths) | Partial (macOS profile paths) |
+| Browser process probe (`ChromeDataProbe`) | Full | Limited (needs `psutil`) | Limited (needs `psutil`) |
+| Scheduled background tracking | Task Scheduler (built-in `-Schedule`) | systemd user timer (`deploy/linux/install.sh`) | launchd agent (`deploy/macos/install.sh`) |
+| Desktop notifications | — | Real, threshold-based (`notify-send` / KDE Plasma) | — |
 | HTML dashboard (`ui/index.html`) | Full | Full | Full |
 
 ---
@@ -63,19 +90,26 @@ Same Python scripts as Linux release. Works on macOS with Python 3.7+.
 
 ### Windows
 ```batch
-# Extract zip, then double-click:
+:: Extract zip, then double-click:
 Run-DataUsageTracker.bat
 Run-FindDataHog.bat
 Run-ChromeDataProbe.bat
 ```
 
-### Linux / macOS
+### Linux (Arch / KDE Plasma)
 ```bash
-# Extract tar.gz
+# Recommended: one-line installer (sets up the corrected timer)
+bash deploy/linux/install.sh
+# or manually:
+python3 python/data_tracker_cross_platform.py            # log one data point
+python3 python/data_tracker_cross_platform.py --snapshot # print-only
+# Dashboard: open ui/index.html and drop in ~/DataUsageLogs/DataUsage_Log.csv
+```
+
+### macOS
+```bash
+bash deploy/macos/install.sh
 python3 python/data_tracker_cross_platform.py
-python3 python/find_data_hog_cross_platform.py
-# View results in browser:
-open ui/index.html   # or xdg-open / browser of choice
 ```
 
 ---
@@ -85,27 +119,24 @@ open ui/index.html   # or xdg-open / browser of choice
 | Platform | Required | Optional |
 |---|---|---|
 | Windows | Windows 11, PowerShell | None |
-| Linux | Python 3.7+ | `psutil` (`pip install psutil`) |
-| macOS | Python 3.7+ | `psutil` (`pip install psutil`) |
+| Linux | Python 3.9+ | `libnotify` for KDE Plasma notifications; `psutil` only if `/proc/net/dev` is unavailable |
+| macOS | Python 3.9+ | `psutil` (`pip install psutil`) for adapter statistics |
 
 ---
 
 ## Limitations Acknowledged
 
-1. **Per-app usage is Windows-only** — Windows maintains a System Resource Usage Monitor (SRUM) database that has no direct Linux/macOS equivalent. The Python alternatives provide adapter-level tracking only.
-2. **Scheduled background tracking is Windows-only** — The `.ps1` uses `Register-ScheduledTask`. Linux/macOS users would need to set up `cron` or `systemd` timers separately.
-3. **Browser download folder scanning is adapted, not identical** — The `.ps1` reads Windows `Preferences` JSON and `prefs.js`. The Python version uses standard Linux/macOS profile paths (`~/.config/google-chrome`, `~/Library/Application Support/Google/Chrome`).
-4. **Live connection monitoring (`ChromeDataProbe`) is not included in Linux/macOS packages** — It relies on `Get-NetTCPConnection` (Windows-specific). A Python equivalent using `psutil.Process.connections()` could be added in future releases.
+1. **Per-app usage is Windows-only** — Windows' SRUM database has no
+   Linux/macOS equivalent; the Python ports provide adapter-level tracking.
+2. **VPN double-count (all platforms)** — adapter totals sum every interface;
+   with a VPN active the same payload appears on both the tunnel and the
+   physical interface. Read per-adapter rows, not the sum.
+3. **Windows per-app data expires after ~30 days** (SRUM retention) and some
+   traffic lives in non-attributed buckets, so per-app sums may not equal
+   adapter totals.
+4. **First log point after a fresh install counts the whole since-boot
+   counter** — by design, documented in the tracker output.
 
 ---
 
-## Next Release Plan (Not Merged — Continuing in PR #1)
-
-- [ ] Add Python-based live connection monitor (`python/chrome_probe_cross_platform.py`)
-- [ ] Add Linux/macOS scheduled tracking instructions (`docs/linux_scheduling.md`)
-- [ ] Create binary/executable releases (PyInstaller or similar) for users without Python
-- [ ] Add chart visualization to `ui/index.html` using a lightweight library
-
----
-
-*No forced merge. All releases packaged from the `arena/01a029b8-datausage-tracker` branch. PR remains open for continued work.*
+*No forced merge. All releases packaged from the `arena/01a04ccb-datausage-tracker` branch. PR remains open for continued work.*

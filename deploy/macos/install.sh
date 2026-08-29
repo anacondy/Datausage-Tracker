@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # One-line install for macOS
-# Usage: curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a029b8-datausage-tracker/deploy/macos/install.sh | bash
+# Usage: curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/macos/install.sh | bash
 
 set -euo pipefail
 
 REPO_URL="https://github.com/anacondy/Datausage-Tracker"
-BRANCH="arena/01a029b8-datausage-tracker"
+BRANCH="arena/01a04ccb-datausage-tracker"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/datausage-tracker}"
 LAUNCH_DIR="$HOME/Library/LaunchAgents"
 
