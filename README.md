@@ -146,6 +146,9 @@ Windows, so the same `ui/index.html` dashboard works for both.
 One-line install for Arch / KDE Plasma (systemd user service + timer, no root):
 
 ```bash
+# Stable (survives branch deletion; live once the v1.0.2 release assets are published):
+curl -fsSL https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-linux.sh | bash
+# Dev (tracks this branch):
 curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/linux/install.sh | bash
 ```
 
@@ -158,7 +161,7 @@ curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-data
   crosses a threshold (512 MB/interval, 2 GB/day defaults). On Arch:
   `sudo pacman -S libnotify`.
 - Status / uninstall: `bash install.sh --status` / `bash install.sh --uninstall`
-  (see `audit/ONE_LINERS.md` for the full cheat sheet).
+  (see `docs/ONE_LINERS.md` for the full cheat sheet).
 
 Per-app (WinRT SRUM) tracking stays Windows-only — that's an OS limitation,
 documented in `docs/CROSS_PLATFORM_ASSESSMENT.md`.

@@ -31,6 +31,23 @@ Three residual issues found in an independent re-sweep of v1.0.1, all fixed:
 `install-windows.ps1`, `install-macos.sh` embed the full code — download once,
 install anywhere, no further network access needed.
 
+**One-line installs (stable URLs — this release):**
+
+```bash
+# Linux / Arch / KDE Plasma
+curl -fsSL https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-linux.sh | bash
+# macOS
+curl -fsSL https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-macos.sh | bash
+```
+```powershell
+# Windows
+iwr -useb https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-windows.ps1 | iex
+```
+
+Each installer supports the full lifecycle: `status` / `stop` / `uninstall` /
+`purge-data` (see `docs/ONE_LINERS.md` in the repo for manual equivalents).
+Verify downloads with `SHA256SUMS.txt` included in this release.
+
 ---
 
 # Release Notes — DataUsageTracker

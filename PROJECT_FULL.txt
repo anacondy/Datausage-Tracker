@@ -52,4 +52,5 @@ were then fixed on this branch — see FIXES_APPLIED.md for the mapping:
   (new defect found during the port; fixed on both platforms).
 - Releases rebuilt as v1.0.1; broken v1.0.0 archives removed.
 - New functional tests: tests/test_delta_methodology.py (26 checks, all pass).
-- One-liners cheat sheet: audit/ONE_LINERS.md.
+- One-liners cheat sheet: docs/ONE_LINERS.md (moved from audit/ on 2026-08-29;
+  user-facing doc, covers stable release URLs + dev URLs for all 3 OSes).

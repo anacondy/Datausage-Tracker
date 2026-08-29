@@ -14,7 +14,11 @@ No manual file copying needed — one command per OS.
 ## Linux (Arch / KDE Plasma / any systemd distro)
 
 ```bash
-# One-line download + install (bash)
+# Stable one-line install (survives branch deletion; live once the v1.0.2
+# release assets are published on the release page):
+curl -fsSL https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-linux.sh | bash
+
+# Dev one-line install (tracks the branch):
 curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/linux/install.sh | bash
 
 # Status / uninstall
@@ -53,7 +57,9 @@ Uninstall: `bash install.sh --uninstall` (or delete `$INSTALL_DIR` and
 ## Windows (PowerShell / CMD)
 
 ```powershell
-# One-line PowerShell install
+# Stable one-line install (live once the v1.0.2 release assets are published):
+iwr -useb https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-windows.ps1 | iex
+# Dev one-line install (tracks the branch):
 iwr -useb https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/windows/install.ps1 | iex
 ```
 
@@ -71,7 +77,9 @@ Uninstall: `Unregister-ScheduledTask -TaskName DataUsageTracker -Confirm:$false`
 ## macOS
 
 ```bash
-# One-line bash install
+# Stable one-line install (live once the v1.0.2 release assets are published):
+curl -fsSL https://github.com/anacondy/Datausage-Tracker/releases/download/v1.0.2/install-macos.sh | bash
+# Dev one-line install (tracks the branch):
 curl -fsSL https://github.com/anacondy/Datausage-Tracker/raw/arena/01a04ccb-datausage-tracker/deploy/macos/install.sh | bash
 ```
 
@@ -118,3 +126,8 @@ For GitHub Releases, use the self-contained one-line installers in
 `datausage-v1.0.2/release-assets/` (verified by `SHA256SUMS.txt`).
 
 But for deployable installation (recommended), use the one-line commands above.
+
+> **Note:** the `releases/download/v1.0.2/...` (stable) URLs 404 until the eight
+> release assets are published on the v1.0.2 release page; until then use the
+> dev/raw URLs. Full lifecycle one-liners for every OS live in
+> `docs/ONE_LINERS.md`.
