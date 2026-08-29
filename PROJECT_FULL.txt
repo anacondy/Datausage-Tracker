@@ -27,7 +27,9 @@ names) were REMOVED from README.md and ChromeDataProbe.ps1 and replaced with
 generic guidance; release archives rebuilt from the scrubbed sources.
 
 === DEPLOY ===
-Linux: deploy/linux/install.sh (systemd user service, MemoryMax=64M, Nice=-5, KDE optimized)
+Linux: deploy/linux/install.sh (systemd user service, MemoryMax=64M, Nice=10 +
+idle CPU/IO scheduling — v1.0.0's Nice=-5 was impossible unprivileged; KDE
+notifications, Arch-ready; see FIXES_APPLIED.md)
 Windows: deploy/windows/install.ps1 (TaskScheduler daemon)
 macOS: deploy/macos/install.sh (launchd agent)
 One-line commands in deploy/README.md.
